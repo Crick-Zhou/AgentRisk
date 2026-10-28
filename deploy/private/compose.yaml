@@ -1,0 +1,45 @@
+name: agentrisk
+services:
+  web:
+    image: agentrisk:0.4.0
+    build:
+      context: ../..
+      dockerfile: deploy/private/Dockerfile
+    ports:
+      - "127.0.0.1:18475:18475"
+    restart: unless-stopped
+    user: "10001:10001"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 384m
+    cpus: 1.0
+    environment:
+      NODE_ENV: production
+      PORT: "18475"
+      AGENTRISK_CREDENTIAL_FILE: /run/secrets/dev.env
+      AGENTRISK_AUTH_FILE: /run/secrets/auth.json
+      AGENTRISK_CONTAINER_NETWORK: bridge
+    volumes:
+      - type: bind
+        source: /etc/agentrisk/dev.env
+        target: /run/secrets/dev.env
+        read_only: true
+      - type: bind
+        source: /etc/agentrisk/auth.json
+        target: /run/secrets/auth.json
+        read_only: true
+    tmpfs:
+      - /tmp:size=16777216,mode=1777
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:18475/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 5m
+        max-file: "2"
